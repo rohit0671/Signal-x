@@ -1,0 +1,808 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>CryptoSignals</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #050a0f;
+      --bg2: #0a1520;
+      --bg3: #0f1e2d;
+      --card: #0d1b28;
+      --border: #1a3349;
+      --accent: #00e5ff;
+      --accent2: #7b2fff;
+      --green: #00ff88;
+      --red: #ff3b6b;
+      --yellow: #ffcc00;
+      --text: #e0f4ff;
+      --muted: #4a7a99;
+      --glow: 0 0 20px rgba(0,229,255,0.25);
+      --glow-green: 0 0 20px rgba(0,255,136,0.25);
+      --glow-red: 0 0 20px rgba(255,59,107,0.25);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+    body {
+      font-family: 'Syne', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* BG grid */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(0,229,255,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,229,255,0.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .app { position: relative; z-index: 1; padding-bottom: 80px; }
+
+    /* ── HEADER ── */
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 20px 12px;
+      border-bottom: 1px solid var(--border);
+      background: rgba(5,10,15,0.9);
+      backdrop-filter: blur(12px);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .logo-icon {
+      width: 36px;
+      height: 36px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      box-shadow: var(--glow);
+    }
+
+    .logo-text {
+      font-size: 18px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      background: linear-gradient(90deg, var(--accent), #a78bfa);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .live-badge {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(0,255,136,0.1);
+      border: 1px solid rgba(0,255,136,0.3);
+      border-radius: 20px;
+      padding: 4px 10px;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--green);
+      letter-spacing: 0.5px;
+    }
+
+    .live-dot {
+      width: 6px;
+      height: 6px;
+      background: var(--green);
+      border-radius: 50%;
+      animation: pulse 1.5s infinite;
+      box-shadow: 0 0 6px var(--green);
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(0.8); }
+    }
+
+    /* ── STATS BANNER ── */
+    .stats-banner {
+      display: flex;
+      gap: 1px;
+      margin: 16px;
+      background: var(--border);
+      border-radius: 16px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+    }
+
+    .stat-item {
+      flex: 1;
+      background: var(--card);
+      padding: 14px 8px;
+      text-align: center;
+      transition: background 0.2s;
+    }
+
+    .stat-item:active { background: var(--bg3); }
+
+    .stat-value {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 18px;
+      font-weight: 600;
+      letter-spacing: -0.5px;
+    }
+
+    .stat-label {
+      font-size: 10px;
+      color: var(--muted);
+      margin-top: 3px;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+    }
+
+    .stat-value.green { color: var(--green); }
+    .stat-value.red { color: var(--red); }
+    .stat-value.accent { color: var(--accent); }
+
+    /* ── FILTER TABS ── */
+    .filter-row {
+      display: flex;
+      gap: 8px;
+      padding: 0 16px 12px;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+    .filter-row::-webkit-scrollbar { display: none; }
+
+    .filter-btn {
+      flex-shrink: 0;
+      padding: 7px 14px;
+      border-radius: 20px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--muted);
+      font-family: 'Syne', sans-serif;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      letter-spacing: 0.3px;
+    }
+
+    .filter-btn.active {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: var(--bg);
+      box-shadow: var(--glow);
+    }
+
+    .filter-btn:active { transform: scale(0.96); }
+
+    /* ── SECTION TITLE ── */
+    .section-title {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      padding: 4px 16px 10px;
+    }
+
+    /* ── SIGNAL CARD ── */
+    .signals-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      padding: 0 16px;
+    }
+
+    .signal-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 16px;
+      cursor: pointer;
+      transition: all 0.2s;
+      position: relative;
+      overflow: hidden;
+      animation: slideIn 0.4s ease backwards;
+    }
+
+    .signal-card::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 3px;
+      border-radius: 3px 0 0 3px;
+    }
+
+    .signal-card.long::before { background: var(--green); box-shadow: var(--glow-green); }
+    .signal-card.short::before { background: var(--red); box-shadow: var(--glow-red); }
+    .signal-card.neutral::before { background: var(--yellow); }
+
+    .signal-card:active { transform: scale(0.98); border-color: var(--accent); }
+
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateY(16px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .card-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+
+    .coin-info {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .coin-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      font-weight: 700;
+      background: var(--bg3);
+      border: 1px solid var(--border);
+    }
+
+    .coin-name {
+      font-size: 16px;
+      font-weight: 700;
+      letter-spacing: -0.3px;
+    }
+
+    .coin-pair {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 1px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .signal-badge {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+    }
+
+    .signal-badge.long {
+      background: rgba(0,255,136,0.1);
+      border: 1px solid rgba(0,255,136,0.3);
+      color: var(--green);
+    }
+
+    .signal-badge.short {
+      background: rgba(255,59,107,0.1);
+      border: 1px solid rgba(255,59,107,0.3);
+      color: var(--red);
+    }
+
+    .signal-badge.neutral {
+      background: rgba(255,204,0,0.1);
+      border: 1px solid rgba(255,204,0,0.3);
+      color: var(--yellow);
+    }
+
+    /* Price row */
+    .price-row {
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .current-price {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 22px;
+      font-weight: 600;
+      letter-spacing: -1px;
+    }
+
+    .price-change {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      font-weight: 600;
+    }
+    .price-change.up { color: var(--green); }
+    .price-change.down { color: var(--red); }
+
+    /* Indicators row */
+    .indicators {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-bottom: 12px;
+    }
+
+    .indicator-chip {
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 4px 8px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      color: var(--muted);
+      display: flex;
+      gap: 4px;
+      align-items: center;
+    }
+
+    .indicator-chip span { color: var(--text); font-weight: 500; }
+    .indicator-chip .green { color: var(--green); }
+    .indicator-chip .red { color: var(--red); }
+
+    /* Target levels */
+    .levels-row {
+      display: flex;
+      gap: 8px;
+    }
+
+    .level-box {
+      flex: 1;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 8px 10px;
+      text-align: center;
+    }
+
+    .level-label {
+      font-size: 9px;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: var(--muted);
+      margin-bottom: 3px;
+    }
+
+    .level-value {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .level-value.entry { color: var(--accent); }
+    .level-value.tp { color: var(--green); }
+    .level-value.sl { color: var(--red); }
+
+    /* Confidence bar */
+    .confidence-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .conf-label {
+      font-size: 10px;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+
+    .conf-bar-track {
+      flex: 1;
+      height: 4px;
+      background: var(--bg3);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .conf-bar-fill {
+      height: 100%;
+      border-radius: 4px;
+      transition: width 1s ease;
+    }
+
+    .conf-pct {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      font-weight: 600;
+      width: 32px;
+      text-align: right;
+    }
+
+    /* Timeframe tag */
+    .card-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 10px;
+    }
+
+    .timeframe-tag {
+      font-size: 10px;
+      color: var(--muted);
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .time-ago {
+      font-size: 10px;
+      color: var(--muted);
+    }
+
+    /* ── LOADING SKELETON ── */
+    .skeleton {
+      background: linear-gradient(90deg, var(--card) 25%, var(--bg3) 50%, var(--card) 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.5s infinite;
+      border-radius: 12px;
+    }
+
+    @keyframes shimmer {
+      0% { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+
+    .skel-card {
+      height: 160px;
+      margin: 0 16px 10px;
+      border-radius: 16px;
+    }
+
+    /* ── BOTTOM NAV ── */
+    .bottom-nav {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      display: flex;
+      background: rgba(5,10,15,0.95);
+      backdrop-filter: blur(16px);
+      border-top: 1px solid var(--border);
+      z-index: 200;
+    }
+
+    .nav-item {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      padding: 12px 0 10px;
+      cursor: pointer;
+      transition: all 0.2s;
+      color: var(--muted);
+    }
+
+    .nav-item.active { color: var(--accent); }
+    .nav-item:active { transform: scale(0.9); }
+
+    .nav-icon { font-size: 20px; line-height: 1; }
+    .nav-label { font-size: 10px; font-weight: 600; letter-spacing: 0.3px; }
+
+    /* ── TABS PAGES ── */
+    .page { display: none; }
+    .page.active { display: block; }
+
+    /* ── MARKET OVERVIEW ── */
+    .market-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      padding: 0 16px;
+    }
+
+    .market-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 14px;
+      cursor: pointer;
+      transition: all 0.2s;
+      animation: slideIn 0.4s ease backwards;
+    }
+
+    .market-card:active { transform: scale(0.97); }
+
+    .mk-symbol {
+      font-size: 14px;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .mk-price {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+
+    .mk-change {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .mk-signal {
+      font-size: 10px;
+      font-weight: 700;
+      margin-top: 8px;
+      letter-spacing: 0.5px;
+    }
+
+    /* ── SETTINGS PAGE ── */
+    .settings-section {
+      margin: 0 16px 20px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      overflow: hidden;
+    }
+
+    .settings-header {
+      padding: 14px 16px 10px;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .setting-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--border);
+      cursor: pointer;
+    }
+
+    .setting-row:last-child { border-bottom: none; }
+
+    .setting-label {
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .setting-desc {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+
+    .toggle {
+      width: 46px;
+      height: 26px;
+      background: var(--bg3);
+      border-radius: 13px;
+      position: relative;
+      transition: background 0.3s;
+      border: 1px solid var(--border);
+      cursor: pointer;
+    }
+
+    .toggle.on { background: var(--accent); border-color: var(--accent); }
+
+    .toggle::after {
+      content: '';
+      position: absolute;
+      width: 20px;
+      height: 20px;
+      background: white;
+      border-radius: 50%;
+      top: 2px;
+      left: 2px;
+      transition: transform 0.3s;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    }
+
+    .toggle.on::after { transform: translateX(20px); }
+
+    /* ── SPARKLINE ── */
+    .sparkline-wrap {
+      width: 80px;
+      height: 30px;
+    }
+
+    /* ── TOAST ── */
+    .toast {
+      position: fixed;
+      top: 70px;
+      left: 50%;
+      transform: translateX(-50%) translateY(-20px);
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 10px 18px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text);
+      z-index: 999;
+      opacity: 0;
+      transition: all 0.3s;
+      white-space: nowrap;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    /* Refresh btn */
+    .refresh-btn {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin: 0 16px 12px;
+      padding: 10px 16px;
+      background: rgba(0,229,255,0.08);
+      border: 1px solid rgba(0,229,255,0.2);
+      border-radius: 12px;
+      color: var(--accent);
+      font-family: 'Syne', sans-serif;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      width: calc(100% - 32px);
+      justify-content: center;
+      transition: all 0.2s;
+    }
+
+    .refresh-btn:active { transform: scale(0.98); background: rgba(0,229,255,0.15); }
+
+    .spin { animation: spin 1s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--muted);
+    }
+
+    .empty-state .emoji { font-size: 48px; margin-bottom: 12px; }
+    .empty-state p { font-size: 14px; }
+  </style>
+</head>
+<body>
+<div class="app">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="logo">
+      <div class="logo-icon">⚡</div>
+      <span class="logo-text">SignalX</span>
+    </div>
+    <div class="live-badge">
+      <div class="live-dot"></div>
+      LIVE
+    </div>
+  </div>
+
+  <!-- Signals Page -->
+  <div class="page active" id="page-signals">
+
+    <!-- Stats Banner -->
+    <div class="stats-banner" id="stats-banner">
+      <div class="stat-item">
+        <div class="stat-value accent" id="stat-total">–</div>
+        <div class="stat-label">Signals</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-value green" id="stat-long">–</div>
+        <div class="stat-label">Long</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-value red" id="stat-short">–</div>
+        <div class="stat-label">Short</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-value green" id="stat-accuracy">–</div>
+        <div class="stat-label">Accuracy</div>
+      </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="filter-row" id="filter-row">
+      <button class="filter-btn active" data-filter="all">All</button>
+      <button class="filter-btn" data-filter="long">🟢 Long</button>
+      <button class="filter-btn" data-filter="short">🔴 Short</button>
+      <button class="filter-btn" data-filter="strong">⚡ Strong</button>
+      <button class="filter-btn" data-filter="1h">1H</button>
+      <button class="filter-btn" data-filter="4h">4H</button>
+      <button class="filter-btn" data-filter="1d">1D</button>
+    </div>
+
+    <!-- Refresh -->
+    <button class="refresh-btn" id="refresh-btn" onclick="fetchSignals()">
+      <span id="refresh-icon">🔄</span> Refresh Signals
+    </button>
+
+    <!-- Section label -->
+    <div class="section-title" id="signals-label">Loading signals...</div>
+
+    <!-- Signals List -->
+    <div class="signals-list" id="signals-list">
+      <div class="skeleton skel-card"></div>
+      <div class="skeleton skel-card"></div>
+      <div class="skeleton skel-card"></div>
+    </div>
+
+  </div>
+
+  <!-- Market Page -->
+  <div class="page" id="page-market">
+    <div style="padding: 16px 0 8px;">
+      <div class="section-title">Market Overview</div>
+      <div class="market-grid" id="market-grid">
+        <div class="skeleton skel-card" style="height: 110px; margin: 0;"></div>
+        <div class="skeleton skel-card" style="height: 110px; margin: 0;"></div>
+        <div class="skeleton skel-card" style="height: 110px; margin: 0;"></div>
+        <div class="skeleton skel-card" style="height: 110px; margin: 0;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Settings Page -->
+  <div class="page" id="page-settings">
+    <div style="height: 16px;"></div>
+
+    <div class="settings-section">
+      <div class="settings-header">Notifications</div>
+      <div class="setting-row" onclick="toggleSetting(this)">
+        <div>
+          <div class="setting-label">Strong Signals Only</div>
+          <div class="setting-desc">Only alerts for 80%+ confidence</div>
+        </div>
+        <div class="toggle on"></div>
+      </div>
+      <div class="setting-row" onclick="toggleSetting(this)">
+        <div>
+          <div class="setting-label">Long Signals</div>
+          <div class="setting-desc">BUY / LONG alerts</div>
+        </div>
+        <div class="toggle on"></div>
+      </div>
+      <div class="setting-row" onclick="toggleSetting(this)">
+        <div>
+          <div class="setting-label">Short Signals</div>
+          <div class="setting-desc">SELL / SHORT alerts</div>
+        </div>
+        <div class="toggle on"></div>
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <div class="settings-header">Timeframes</div>
+      <div class="setting-row" onclick="toggleSetting(this)">
+        <div>
+          <div class="setting-label">1 Hour (1H)</div>
+        </div>
+        <div class="toggle on"></div>
+      </div>
+      <div class="setting-row" onclick="toggleSetting(this)">
+        <div>
+          <div class="setting-label">4 Hours (4H)</div>
+        </div>
+        <div class="toggle on"></div>
+      </div>
+      <div class="setting-row" onclick="toggleSetting(this)">
